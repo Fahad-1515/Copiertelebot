@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: telegram-forward-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: ADMIN_LOG_GROUP_ID
+        sync: false
