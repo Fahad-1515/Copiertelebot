@@ -40,4 +40,4 @@ class RateLimiter:
     
     def set_delay(self, delay: float):
         """Manually set delay"""
-        self.current_delay = max(0.3, min(delay, 10.0))
+        self.current_delay = max(0.5, min(delay, 10.0))

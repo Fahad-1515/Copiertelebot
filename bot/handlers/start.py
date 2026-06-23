@@ -11,6 +11,7 @@ def register_start_handlers(app: Client, admin_logger: AdminLogger):
         user = message.from_user
         await add_user(user.id, user.username or "", user.first_name or "")
         
+        # Notify admin about new user
         await admin_logger.send_new_user_notification(
             user.id, user.username or "", user.first_name or ""
         )
@@ -19,9 +20,8 @@ def register_start_handlers(app: Client, admin_logger: AdminLogger):
             [InlineKeyboardButton("▶️ Start Forwarding", callback_data="new_job")],
             [InlineKeyboardButton("📋 My Jobs", callback_data="my_jobs"),
              InlineKeyboardButton("⚙️ Settings", callback_data="settings")],
-            [InlineKeyboardButton("📜 History", callback_data="history"),
-             InlineKeyboardButton("📊 Stats", callback_data="stats")],
-            [InlineKeyboardButton("❓ Help", callback_data="help")]
+            [InlineKeyboardButton("❓ Help", callback_data="help"),
+             InlineKeyboardButton("📊 Stats", callback_data="stats")]
         ])
         
         await message.reply(
@@ -35,9 +35,8 @@ def register_start_handlers(app: Client, admin_logger: AdminLogger):
             [InlineKeyboardButton("▶️ Start Forwarding", callback_data="new_job")],
             [InlineKeyboardButton("📋 My Jobs", callback_data="my_jobs"),
              InlineKeyboardButton("⚙️ Settings", callback_data="settings")],
-            [InlineKeyboardButton("📜 History", callback_data="history"),
-             InlineKeyboardButton("📊 Stats", callback_data="stats")],
-            [InlineKeyboardButton("❓ Help", callback_data="help")]
+            [InlineKeyboardButton("❓ Help", callback_data="help"),
+             InlineKeyboardButton("📊 Stats", callback_data="stats")]
         ])
         
         await callback_query.message.edit_text(
@@ -54,7 +53,7 @@ def register_start_handlers(app: Client, admin_logger: AdminLogger):
 📌 How to use this bot:
 
 1️⃣ Click "Start Forwarding" to begin
-2️⃣ Send source channel link (supports message ID)
+2️⃣ Send source channel link
 3️⃣ Add destination channels
 4️⃣ Choose message count
 5️⃣ Set delay between messages
@@ -68,8 +67,6 @@ def register_start_handlers(app: Client, admin_logger: AdminLogger):
 • You can pause/resume jobs anytime
 
 🔗 Supported formats:
-• https://t.me/channel/200 (starts from msg #200)
-• https://t.me/c/1234567890/5
 • https://t.me/channel
 • @channel
 • -1001234567890
