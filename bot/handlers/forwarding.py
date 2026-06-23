@@ -3,9 +3,8 @@ from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from bot.core.db import create_job, get_user_settings, update_job_progress
 from bot.core.state import user_states
-from bot.utils.link_parser import parse_chat_link, get_chat_info, parse_destination
+from bot.utils.link_parser import parse_destination_with_start, get_chat_info
 from bot.utils.formatter import format_source_confirmation, format_destinations_list, format_final_confirmation
-from bot.utils.progress import format_time
 from bot.services.forwarder import ForwardEngine
 
 def register_forwarding_handlers(app: Client, forward_engine: ForwardEngine):
@@ -20,8 +19,9 @@ def register_forwarding_handlers(app: Client, forward_engine: ForwardEngine):
             """📥 Send me the source channel link or username.
 
 💡 Examples you can send:
-- https://t.me/examplechannel
+- https://t.me/examplechannel/200 (starts from msg #200)
 - https://t.me/c/1234567890/5
+- https://t.me/examplechannel
 - @examplechannel
 - -1001234567890
 
@@ -45,12 +45,12 @@ def register_forwarding_handlers(app: Client, forward_engine: ForwardEngine):
         text = message.text.strip()
         
         if state == "waiting_source":
-            chat_id = await parse_chat_link(text)
+            chat_id, start_msg_id = await parse_destination_with_start(text)
             if not chat_id:
                 await message.reply(
                     "❌ Invalid link format!\n\n"
                     "Please send a valid channel link like:\n"
-                    "• https://t.me/channelname\n"
+                    "• https://t.me/channelname/200\n"
                     "• @channelname\n"
                     "• -1001234567890"
                 )
@@ -69,6 +69,7 @@ def register_forwarding_handlers(app: Client, forward_engine: ForwardEngine):
             user_states.set_data(user_id, "source_id", chat_id)
             user_states.set_data(user_id, "source_name", name)
             user_states.set_data(user_id, "source_members", members)
+            user_states.set_data(user_id, "start_msg_id", start_msg_id)
             user_states.set_state(user_id, "confirming_source")
             
             keyboard = InlineKeyboardMarkup([
@@ -77,7 +78,7 @@ def register_forwarding_handlers(app: Client, forward_engine: ForwardEngine):
             ])
             
             await message.reply(
-                format_source_confirmation(name, chat_id, members),
+                format_source_confirmation(name, chat_id, members, start_msg_id),
                 reply_markup=keyboard
             )
         
@@ -102,7 +103,7 @@ def register_forwarding_handlers(app: Client, forward_engine: ForwardEngine):
                 )
                 return
             
-            dest_id = await parse_destination(text)
+            dest_id, _ = await parse_destination_with_start(text)
             if not dest_id:
                 await message.reply(
                     "❌ Invalid destination format!\n\n"
@@ -178,6 +179,22 @@ Select delay:""",
                 await proceed_to_filter(message, user_id)
             except:
                 await message.reply("❌ Please send a valid number between 0.3 and 60 (e.g., 0.8, 1.5, 3)")
+        
+        elif state == "waiting_settings_delay":
+            try:
+                delay = float(text)
+                if delay < 0.3 or delay > 60:
+                    raise ValueError
+                
+                settings = await get_user_settings(user_id)
+                settings['default_delay'] = delay
+                from bot.core.db import update_user_settings
+                await update_user_settings(user_id, settings)
+                
+                await message.reply(f"✅ Default delay set to {delay}s!")
+            except:
+                await message.reply("❌ Please send a valid number between 0.3 and 60")
+            user_states.clear_state(user_id)
     
     @app.on_callback_query()
     async def handle_forwarding_callbacks(client: Client, callback_query: CallbackQuery):
@@ -327,10 +344,7 @@ Type /done when finished.
             destinations = user_states.get_data(user_id, "destinations") or []
             total = user_states.get_data(user_id, "message_count")
             delay = user_states.get_data(user_id, "delay")
-            
-            est_time = total * delay if isinstance(total, int) else "unknown"
-            if isinstance(est_time, (int, float)):
-                est_time = format_time(est_time)
+            start_msg_id = user_states.get_data(user_id, "start_msg_id") or 1
             
             keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("▶️ Start Now", callback_data="start_forwarding"),
@@ -342,7 +356,7 @@ Type /done when finished.
                 format_final_confirmation(
                     source_name, destinations,
                     total, delay, filter_map[filter_type],
-                    est_time
+                    start_msg_id
                 ),
                 reply_markup=keyboard
             )
@@ -409,6 +423,7 @@ async def start_forwarding_job(client, callback_query, user_id, forward_engine):
     total = user_states.get_data(user_id, "message_count")
     delay = user_states.get_data(user_id, "delay")
     filter_type = user_states.get_data(user_id, "filter_type")
+    start_msg_id = user_states.get_data(user_id, "start_msg_id") or 1
     
     settings = await get_user_settings(user_id)
     
@@ -422,7 +437,7 @@ async def start_forwarding_job(client, callback_query, user_id, forward_engine):
     
     job_id = await create_job(
         user_id, source_id, source_name, destinations,
-        total, delay, filter_type, admin_msg_id
+        total, delay, filter_type, admin_msg_id, start_msg_id
     )
     
     job_data = {
@@ -433,14 +448,14 @@ async def start_forwarding_job(client, callback_query, user_id, forward_engine):
         "total": total,
         "delay_used": delay,
         "filter_type": filter_type,
-        "started_at": None
+        "start_msg_id": start_msg_id
     }
     
     task = asyncio.create_task(
         forward_engine.run_forwarding_job(
             job_id, user_id, source_id, destinations,
             total, delay, filter_type, settings,
-            admin_msg_id, job_data
+            admin_msg_id, job_data, start_msg_id
         )
     )
     
@@ -452,6 +467,7 @@ async def start_forwarding_job(client, callback_query, user_id, forward_engine):
         f"📥 Source: {source_name}\n"
         f"📤 Destinations: {len(destinations)}\n"
         f"📩 Messages: {total}\n"
-        f"⏱️ Delay: {delay}s\n\n"
+        f"⏱️ Delay: {delay}s\n"
+        f"📍 Starting from msg #{start_msg_id}\n\n"
         f"Progress will be shown here. You can use /myjobs to manage this job."
     )

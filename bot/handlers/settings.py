@@ -1,6 +1,7 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from bot.core.db import get_user_settings, update_user_settings
+from bot.core.state import user_states
 
 def register_settings_handlers(app: Client):
     
@@ -9,96 +10,78 @@ def register_settings_handlers(app: Client):
         user_id = callback_query.from_user.id
         settings = await get_user_settings(user_id)
         
-        delay_display = f"{settings['default_delay']}s"
-        retry_display = "ON ✅" if settings['retry_enabled'] else "OFF ❌"
-        mode_display = "Copy ✅" if settings['forward_mode'] == 'copy' else "Forward with tag"
+        text = "⚙️ Settings\n━━━━━━━━━━━━━━━━━━━━\n"
+        text += f"{'✅' if settings['strip_links'] else '☐'} Strip links from captions\n"
+        text += f"{'✅' if settings['strip_mentions'] else '☐'} Strip @mentions\n"
+        text += f"{'✅' if settings['media_only'] else '☐'} Media only (skip text msgs)\n"
+        text += f"{'✅' if settings['text_only'] else '☐'} Text only (skip media msgs)\n"
+        text += f"{'✅' if settings['auto_resume'] else '☐'} Auto-resume on bot restart\n"
+        text += f"⏱️ Default delay: {settings['default_delay']}s\n"
+        text += f"🔄 Max retries: {settings['max_retries']}"
         
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(f"⏱️ Default Delay: {delay_display}", callback_data="edit_delay"),
-             InlineKeyboardButton(f"🔁 Retry: {retry_display}", callback_data="toggle_retry")],
-            [InlineKeyboardButton(f"📋 Forward Mode: {mode_display}", callback_data="toggle_mode"),
-             InlineKeyboardButton(f"🔢 Max Retries: {settings['max_retries']}", callback_data="edit_retries")],
-            [InlineKeyboardButton("💾 Save Changes", callback_data="save_settings"),
-             InlineKeyboardButton("↩️ Back to Menu", callback_data="main_menu")]
+            [InlineKeyboardButton(f"{'✅' if settings['strip_links'] else '☐'} Strip Links", callback_data="toggle_strip_links")],
+            [InlineKeyboardButton(f"{'✅' if settings['strip_mentions'] else '☐'} Strip @mentions", callback_data="toggle_strip_mentions")],
+            [InlineKeyboardButton(f"{'✅' if settings['media_only'] else '☐'} Media Only", callback_data="toggle_media_only")],
+            [InlineKeyboardButton(f"{'✅' if settings['text_only'] else '☐'} Text Only", callback_data="toggle_text_only")],
+            [InlineKeyboardButton(f"{'✅' if settings['auto_resume'] else '☐'} Auto-resume", callback_data="toggle_auto_resume")],
+            [InlineKeyboardButton(f"✏️ Default Delay: {settings['default_delay']}s", callback_data="edit_default_delay")],
+            [InlineKeyboardButton(f"🔄 Max Retries: {settings['max_retries']}", callback_data="edit_max_retries")],
+            [InlineKeyboardButton("🔙 Back", callback_data="main_menu")]
         ])
         
+        await callback_query.message.edit_text(text, reply_markup=keyboard)
+        await callback_query.answer()
+    
+    @app.on_callback_query(filters.regex("^toggle_"))
+    async def toggle_setting_callback(client: Client, callback_query: CallbackQuery):
+        user_id = callback_query.from_user.id
+        setting = callback_query.data.split("_")[1]
+        
+        settings = await get_user_settings(user_id)
+        
+        mapping = {
+            "strip_links": "strip_links",
+            "strip_mentions": "strip_mentions",
+            "media_only": "media_only",
+            "text_only": "text_only",
+            "auto_resume": "auto_resume"
+        }
+        
+        if setting in mapping:
+            settings[mapping[setting]] = not settings[mapping[setting]]
+            await update_user_settings(user_id, settings)
+        
+        await settings_callback(client, callback_query)
+    
+    @app.on_callback_query(filters.regex("^edit_default_delay$"))
+    async def edit_default_delay_callback(client: Client, callback_query: CallbackQuery):
+        user_id = callback_query.from_user.id
+        user_states.set_state(user_id, "waiting_settings_delay")
+        
         await callback_query.message.edit_text(
-            "⚙️ Settings\n━━━━━━━━━━━━━━━━━━━━\n"
-            "Configure your default preferences here.\n"
-            "These settings apply to all your forwarding jobs.\n━━━━━━━━━━━━━━━━━━━━",
-            reply_markup=keyboard
+            "✏️ Enter new default delay in seconds:\n\n"
+            "💡 Examples:\n"
+            "• 0.5  → fast\n"
+            "• 1.0  → balanced\n"
+            "• 3.0  → very safe\n\n"
+            "👉 Type a number like 0.8 or 1.5:",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Cancel", callback_data="settings")]
+            ])
         )
         await callback_query.answer()
     
-    @app.on_callback_query(filters.regex("^edit_delay$"))
-    async def edit_delay_callback(client: Client, callback_query: CallbackQuery):
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("0.5s", callback_data="set_delay_0.5"),
-             InlineKeyboardButton("1s", callback_data="set_delay_1"),
-             InlineKeyboardButton("2s", callback_data="set_delay_2")],
-            [InlineKeyboardButton("3s", callback_data="set_delay_3"),
-             InlineKeyboardButton("✏️ Custom", callback_data="set_delay_custom")],
-            [InlineKeyboardButton("↩️ Back to Settings", callback_data="settings")]
-        ])
-        
-        await callback_query.message.edit_text(
-            "Select default delay for new jobs:",
-            reply_markup=keyboard
-        )
-        await callback_query.answer()
-    
-    @app.on_callback_query(filters.regex(r"^set_delay_(\d+\.?\d*|custom)$"))
-    async def set_delay_callback(client: Client, callback_query: CallbackQuery):
+    @app.on_callback_query(filters.regex("^edit_max_retries$"))
+    async def edit_max_retries_callback(client: Client, callback_query: CallbackQuery):
         user_id = callback_query.from_user.id
-        value = callback_query.data.split("_")[2]
         
-        if value == "custom":
-            await callback_query.message.edit_text(
-                "✏️ Enter custom delay in seconds (e.g., 0.8, 1.5, 3):\n\n"
-                "Type a number between 0.3 and 60:"
-            )
-            # Store that we're waiting for custom delay input
-            await callback_query.answer()
-            # This would need state management, but for simplicity we'll skip
-            return
-        
-        delay = float(value)
-        settings = await get_user_settings(user_id)
-        settings['default_delay'] = delay
-        await update_user_settings(user_id, settings)
-        
-        await callback_query.answer(f"Delay set to {delay}s!")
-        await settings_callback(client, callback_query)
-    
-    @app.on_callback_query(filters.regex("^toggle_retry$"))
-    async def toggle_retry_callback(client: Client, callback_query: CallbackQuery):
-        user_id = callback_query.from_user.id
-        settings = await get_user_settings(user_id)
-        settings['retry_enabled'] = not settings['retry_enabled']
-        await update_user_settings(user_id, settings)
-        
-        await callback_query.answer(f"Retry {'enabled' if settings['retry_enabled'] else 'disabled'}!")
-        await settings_callback(client, callback_query)
-    
-    @app.on_callback_query(filters.regex("^toggle_mode$"))
-    async def toggle_mode_callback(client: Client, callback_query: CallbackQuery):
-        user_id = callback_query.from_user.id
-        settings = await get_user_settings(user_id)
-        settings['forward_mode'] = 'tag' if settings['forward_mode'] == 'copy' else 'copy'
-        await update_user_settings(user_id, settings)
-        
-        mode_display = "Copy" if settings['forward_mode'] == 'copy' else "Forward with tag"
-        await callback_query.answer(f"Mode set to {mode_display}!")
-        await settings_callback(client, callback_query)
-    
-    @app.on_callback_query(filters.regex("^edit_retries$"))
-    async def edit_retries_callback(client: Client, callback_query: CallbackQuery):
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("1", callback_data="set_retries_1"),
              InlineKeyboardButton("3", callback_data="set_retries_3"),
              InlineKeyboardButton("5", callback_data="set_retries_5")],
-            [InlineKeyboardButton("✏️ Custom", callback_data="set_retries_custom")],
-            [InlineKeyboardButton("↩️ Back to Settings", callback_data="settings")]
+            [InlineKeyboardButton("10", callback_data="set_retries_10")],
+            [InlineKeyboardButton("🔙 Back", callback_data="settings")]
         ])
         
         await callback_query.message.edit_text(
@@ -107,28 +90,14 @@ def register_settings_handlers(app: Client):
         )
         await callback_query.answer()
     
-    @app.on_callback_query(filters.regex(r"^set_retries_(\d+|custom)$"))
+    @app.on_callback_query(filters.regex(r"^set_retries_(\d+)$"))
     async def set_retries_callback(client: Client, callback_query: CallbackQuery):
         user_id = callback_query.from_user.id
-        value = callback_query.data.split("_")[2]
+        retries = int(callback_query.data.split("_")[2])
         
-        if value == "custom":
-            await callback_query.message.edit_text(
-                "✏️ Enter custom retry count (1-10):\n\n"
-                "Type a number:"
-            )
-            await callback_query.answer()
-            return
-        
-        retries = int(value)
         settings = await get_user_settings(user_id)
         settings['max_retries'] = retries
         await update_user_settings(user_id, settings)
         
         await callback_query.answer(f"Max retries set to {retries}!")
-        await settings_callback(client, callback_query)
-    
-    @app.on_callback_query(filters.regex("^save_settings$"))
-    async def save_settings_callback(client: Client, callback_query: CallbackQuery):
-        await callback_query.answer("Settings saved!")
         await settings_callback(client, callback_query)

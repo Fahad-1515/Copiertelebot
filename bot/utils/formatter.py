@@ -8,14 +8,15 @@ What would you like to do?
 ━━━━━━━━━━━━━━━━━━━━
 [▶️ Start Forwarding]
 [📋 My Jobs]  [⚙️ Settings]
-[❓ Help]     [📊 Stats]"""
+[📜 History]  [📊 Stats]"""
 
-def format_source_confirmation(name: str, chat_id: str, members: int) -> str:
+def format_source_confirmation(name: str, chat_id: str, members: int, start_msg_id: int = 1) -> str:
     return f"""✅ Source Detected!
 ━━━━━━━━━━━━━━━━━━━━
 📢 Name: {name}
 🆔 ID: {chat_id}
 👥 Members: {members:,}
+📍 Starting from msg #{start_msg_id}
 ━━━━━━━━━━━━━━━━━━━━
 [✅ Confirm] [🔄 Change Source]"""
 
@@ -31,7 +32,7 @@ def format_destinations_list(destinations: List[Dict]) -> str:
 
 def format_final_confirmation(source_name: str, destinations: List[Dict], 
                               total: int, delay: float, filter_type: str,
-                              est_time: str) -> str:
+                              start_msg_id: int = 1) -> str:
     dest_text = "\n".join([f"     • {d.get('name', d['id'])}" for d in destinations[:5]])
     if len(destinations) > 5:
         dest_text += f"\n     • and {len(destinations)-5} more"
@@ -39,47 +40,15 @@ def format_final_confirmation(source_name: str, destinations: List[Dict],
     return f"""🚀 Ready to Forward!
 ━━━━━━━━━━━━━━━━━━━━
 📥 Source:       {source_name}
+📍 Starting:     msg #{start_msg_id}
 📤 Destinations: {len(destinations)} chats
 {dest_text}
 📩 Messages:     {total}
 ⏱️ Delay:        {delay}s/msg
 🎛️ Filter:       {filter_type}
 📋 Mode:         Copy (no forward tag)
-⏰ Est. Time:    ~{est_time}
 ━━━━━━━━━━━━━━━━━━━━
 [▶️ Start Now] [✏️ Edit Settings] [❌ Cancel]"""
-
-def format_progress(forwarded: int, total: int, speed: float, 
-                    delay: float, elapsed: float, eta: str, 
-                    errors: int, retries: int) -> str:
-    from bot.utils.progress import calculate_progress
-    bar = calculate_progress(forwarded, total)
-    
-    return f"""🚀 Forwarding in Progress...
-━━━━━━━━━━━━━━━━━━━━
-📊 Progress:  {forwarded}/{total} {bar}
-⚡ Speed:     {speed:.1f} msg/sec
-⏱️ Delay:      {delay}s/msg
-⏰ Elapsed:   {format_time_simple(elapsed)}
-⏰ ETA:       ~{eta} remaining
-❗ Errors:    {errors}
-🔄 Retries:   {retries}
-━━━━━━━━━━━━━━━━━━━━
-[⏸️ Pause]  [❌ Cancel]"""
-
-def format_completion(forwarded: int, total: int, delay: float, 
-                      elapsed: float, speed: float, errors: int, 
-                      retries: int) -> str:
-    return f"""✅ Forwarding Complete!
-━━━━━━━━━━━━━━━━━━━━
-📨 Forwarded:  {forwarded}/{total}
-⏱️ Delay Used: {delay}s/msg
-⏰ Total Time: {format_time_simple(elapsed)}
-⚡ Avg Speed:  {speed:.1f} msg/sec
-❗ Errors:     {errors}
-🔄 Retries:    {retries}
-━━━━━━━━━━━━━━━━━━━━
-[🔁 Forward Again] [🏠 Main Menu]"""
 
 def format_time_simple(seconds: float) -> str:
     if seconds < 60:

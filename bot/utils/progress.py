@@ -3,7 +3,7 @@ from typing import Tuple
 
 def calculate_progress(forwarded: int, total: int, bar_length: int = 20) -> str:
     """Generate progress bar"""
-    if total == 0:
+    if total == 0 or total == 999999:
         return "[" + "░" * bar_length + "]"
     
     percent = forwarded / total
@@ -13,7 +13,7 @@ def calculate_progress(forwarded: int, total: int, bar_length: int = 20) -> str:
 
 def calculate_eta(start_time: float, forwarded: int, total: int) -> str:
     """Calculate estimated time remaining"""
-    if forwarded == 0:
+    if forwarded == 0 or total == 999999:
         return "calculating..."
     
     elapsed = time.time() - start_time
