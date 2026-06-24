@@ -1,0 +1,17 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+forward_bot.db
+forward_bot.session
+progress/
+.env
+.git
+.gitignore
+README.md
