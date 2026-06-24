@@ -232,9 +232,10 @@ Type /done when finished.
                 """📩 How many messages to forward?
 
 💡 Examples:
-- 50   → forwards last 50 messages
-- 200  → forwards last 200 messages
-- all  → forwards entire channel history
+- 4    → forwards 4 messages from starting point (start, start+1, start+2, start+3)
+- 50   → forwards 50 messages from starting point
+- 200  → forwards 200 messages from starting point
+- all  → forwards ALL messages from starting point to the end
 
 👉 Send a number or type 'all':"""
             )
@@ -462,11 +463,19 @@ async def start_forwarding_job(client, callback_query, user_id, forward_engine):
     forward_engine.running_jobs[job_id] = task
     user_states.clear_state(user_id)
     
+    # Show message count correctly (YOUR LOGIC: end = start + total)
+    if total >= 999999:
+        msg_count_text = "ALL (to the end)"
+    else:
+        end_msg_id = start_msg_id + total  # YOUR LOGIC
+        total_msgs = total + 1
+        msg_count_text = f"{total_msgs} (#{start_msg_id} → #{end_msg_id})"
+    
     await callback_query.message.edit_text(
         f"✅ Forwarding job started!\n\n"
         f"📥 Source: {source_name}\n"
         f"📤 Destinations: {len(destinations)}\n"
-        f"📩 Messages: {total}\n"
+        f"📩 Messages: {msg_count_text}\n"
         f"⏱️ Delay: {delay}s\n"
         f"📍 Starting from msg #{start_msg_id}\n\n"
         f"Progress will be shown here. You can use /myjobs to manage this job."

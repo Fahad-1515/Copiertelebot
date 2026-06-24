@@ -56,7 +56,14 @@ def register_start_handlers(app: Client, admin_logger: AdminLogger):
 1️⃣ Click "Start Forwarding" to begin
 2️⃣ Send source channel link (supports message ID)
 3️⃣ Add destination channels
-4️⃣ Choose message count
+4️⃣ Choose message count:
+   • 50   → forwards 50 messages from starting point
+   • 200  → forwards 200 messages from starting point
+   • all  → forwards ALL messages from starting point to the end
+   
+   💡 Example: Start at #100, count=5
+      → Forwards #100, #101, #102, #103, #104
+
 5️⃣ Set delay between messages
 6️⃣ Select message filter
 7️⃣ Confirm and start

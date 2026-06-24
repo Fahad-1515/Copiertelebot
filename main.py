@@ -69,6 +69,15 @@ async def main():
     # Register handlers
     register_handlers(app, forward_engine)
     
+    # ============================================================
+    # Initialize Admin Logger and send initial dashboard
+    # ============================================================
+    from bot.services.logger import AdminLogger
+    admin_logger = AdminLogger(app)
+    await admin_logger.init_bot_info()
+    await admin_logger.update_live_dashboard()
+    logger.info("✅ Admin dashboard initialized!")
+    
     asyncio.create_task(keep_alive_server())
     
     await idle()

@@ -37,13 +37,21 @@ def format_final_confirmation(source_name: str, destinations: List[Dict],
     if len(destinations) > 5:
         dest_text += f"\n     • and {len(destinations)-5} more"
     
+    # Show message count with range (YOUR LOGIC: end = start + total)
+    if total >= 999999:
+        msg_text = "ALL (to the end)"
+    else:
+        end_msg_id = start_msg_id + total  # YOUR LOGIC: start + input = end
+        total_msgs = total + 1  # Total messages = input + 1
+        msg_text = f"{total_msgs} (#{start_msg_id} → #{end_msg_id})"
+    
     return f"""🚀 Ready to Forward!
 ━━━━━━━━━━━━━━━━━━━━
 📥 Source:       {source_name}
 📍 Starting:     msg #{start_msg_id}
 📤 Destinations: {len(destinations)} chats
 {dest_text}
-📩 Messages:     {total}
+📩 Messages:     {msg_text}
 ⏱️ Delay:        {delay}s/msg
 🎛️ Filter:       {filter_type}
 📋 Mode:         Copy (no forward tag)
