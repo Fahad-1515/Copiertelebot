@@ -95,6 +95,10 @@ Click "▶️ Start Now"
 
 📜 Job History	See completed jobs
 
+📊 Statistics	Track total forwarded messages
+
+⚙️ Settings	Strip links, mentions, default delay
+
 # Do's
 
 Use 1-2 seconds delay for large jobs (1000+ messages)
@@ -106,5 +110,4 @@ Add bot as admin in destination channels
 Use filters to save space (Media Only for photos/videos)
 
 Check live progress to monitor jobs
-📊 Statistics	Track total forwarded messages
-⚙️ Settings	Strip links, mentions, default delay
+
