@@ -15,8 +15,7 @@ services:
         sync: false
       - key: ADMIN_LOG_GROUP_ID
         sync: false
-    healthCheckPath: /
-    autoDeploy: true
-    envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+    healthCheckPath: /
+    autoDeploy: true
