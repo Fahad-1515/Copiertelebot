@@ -1,11 +1,9 @@
 services:
   - type: web
     name: telegram-forward-bot
-    env: python
+    env: docker
     plan: free
-    buildCommand: |
-      pip install -r requirements.txt
-    startCommand: python main.py
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: BOT_TOKEN
         sync: false
@@ -15,7 +13,5 @@ services:
         sync: false
       - key: ADMIN_LOG_GROUP_ID
         sync: false
-      - key: PYTHON_VERSION
-        value: 3.11.0
     healthCheckPath: /
     autoDeploy: true
