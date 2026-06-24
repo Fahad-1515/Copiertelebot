@@ -2,12 +2,21 @@ import asyncio
 import logging
 import os
 import json
+import sys
 from aiohttp import web
 from pyrogram import Client, idle
 from bot.core.config import Config
 from bot.core.db import init_db, get_job, update_job_progress, complete_job
 from bot.handlers import register_handlers
 from bot.services.forwarder import ForwardEngine
+
+# CRITICAL FIX: Set up event loop policy for Python 3.14+
+if sys.version_info >= (3, 14):
+    import asyncio
+    try:
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    except:
+        pass
 
 logging.basicConfig(
     level=logging.INFO,
@@ -84,4 +93,11 @@ async def main():
     await app.stop()
 
 if __name__ == "__main__":
+    # CRITICAL FIX: Ensure event loop exists before running
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
     asyncio.run(main())
