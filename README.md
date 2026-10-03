@@ -99,7 +99,7 @@ Click "▶️ Start Now"
 
 ⚙️ Settings	Strip links, mentions, default delay
 
-# Do's
+# Do's.
 
 Use 1-2 seconds delay for large jobs (1000+ messages)
 
